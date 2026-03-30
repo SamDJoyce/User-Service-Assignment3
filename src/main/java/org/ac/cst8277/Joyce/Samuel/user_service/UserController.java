@@ -28,7 +28,7 @@ public class UserController {
 
     // Validate token
     @GetMapping("/validate")
-    public Mono<Boolean> validate(@RequestParam String token) {
+    public Mono<Integer> validate(@RequestParam String token) {
         return service.validateToken(token);
     }
     
@@ -52,9 +52,10 @@ public class UserController {
     
     // Create a new User
     @PostMapping("/new-user")
-    public Mono<ApiResponse> createNewUser(	String userName, 
-    										String email, 
-    										String password){
+    public Mono<ApiResponse> createNewUser(	
+    		@RequestParam String userName, 
+    		@RequestParam String email, 
+    		@RequestParam String password){
     	return service.addUser(userName, email, password);
     }
 }

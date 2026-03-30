@@ -48,24 +48,24 @@ public class UserService {
 	    });
 	}
 	
-	public Mono<Boolean> validateToken(String token) {
-	    return Mono.fromCallable(() -> generatedTokens.containsKey(token));
+	public Mono<Integer> validateToken(String token) {
+		if (generatedTokens.containsKey(token)) {
+			return Mono.just(generatedTokens.get(token));
+		}
+	    return Mono.just(0);
 	}
 	
 	public Flux<User> getAllUsers(String token) {
-	    return Mono.fromCallable(() -> {
-	        // Blocking call to validateToken
-	        Boolean valid = validateToken(token).block();
+	    return valid(token)
+	        .flatMapMany(isValid -> {
+	            if (!isValid) {
+	                return Flux.error(new RuntimeException("Invalid token"));
+	            }
 
-	        if (valid == null || !valid) {
-	            throw new RuntimeException("Invalid token");
-	        }
-
-	        // If token is valid, return all users
-	        return repo.findAll();  // returns List<User>
-	    })
-	    .subscribeOn(Schedulers.boundedElastic())   // run blocking call on separate thread
-	    .flatMapMany(Flux::fromIterable);           // convert List<User> -> Flux<User>
+	            return Mono.fromCallable(repo::findAll)
+	                       .subscribeOn(Schedulers.boundedElastic())
+	                       .flatMapMany(Flux::fromIterable);
+	        });
 	}
 	
 	public Mono<ApiResponse> addUser(String userName, String email, String password) {
@@ -92,37 +92,33 @@ public class UserService {
 	    }).subscribeOn(Schedulers.boundedElastic());
 	}
 	
-	public Flux<Role> getAllRoles(String token){
-	    return Mono.fromCallable(() -> {
-	        // Blocking call to validateToken
-	        Boolean valid = validateToken(token).block();
+	public Flux<Role> getAllRoles(String token) {
+	    return valid(token)
+	        .flatMapMany(isValid -> {
+	            if (!isValid) {
+	                return Flux.error(new RuntimeException("Invalid token"));
+	            }
 
-	        if (valid == null || !valid) {
-	            throw new RuntimeException("Invalid token");
-	        }
-
-	        // If token is valid, return all users
-	        return repo.findAll();  // returns List<User>
-	    })
-	    .subscribeOn(Schedulers.boundedElastic())   // run blocking call on separate thread
-	    .flatMapMany(Flux::fromIterable)
-	    .flatMap(user -> Flux.fromIterable(user.getRoles()))
-	    .distinct();    
+	            return Mono.fromCallable(repo::findAll)
+	                    .subscribeOn(Schedulers.boundedElastic())
+	                    .flatMapMany(Flux::fromIterable)
+	                    .flatMap(user -> Flux.fromIterable(user.getRoles()))
+	                    .distinct();
+	        });
 	}
 	
 	// Get all user roles
-	public Flux<UserRolesDTO> getAllUserRoles(String token){
-		return Mono.fromCallable(() -> {
-		    Boolean valid = validateToken(token).block();
+	public Flux<UserRolesDTO> getAllUserRoles(String token) {
+	    return valid(token)
+	        .flatMapMany(isValid -> {
+	            if (!isValid) {
+	                return Flux.error(new RuntimeException("Invalid token"));
+	            }
 
-		    if (valid == null || !valid) {
-		        throw new RuntimeException("Invalid token");
-		    }
-
-		    return repo.findAllUserRoles(); // List<UserRoleDTO>
-		})
-		.subscribeOn(Schedulers.boundedElastic())
-		.flatMapMany(Flux::fromIterable);    
+	            return Mono.fromCallable(repo::findAllUserRoles)
+	                    .subscribeOn(Schedulers.boundedElastic())
+	                    .flatMapMany(Flux::fromIterable);
+	        });
 	}
 	
 	private String generateToken(int userId) {
@@ -132,5 +128,10 @@ public class UserService {
 		} while (generatedTokens.containsKey(token));
 		generatedTokens.put(token, userId);
 		return token;
+	}
+	
+	private Mono<Boolean> valid(String token) {
+	    return validateToken(token)
+	            .map(userId -> userId != 0);
 	}
 }

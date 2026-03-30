@@ -18,13 +18,13 @@ public class SecurityConfig {
 
     @Bean
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
-        http
+        return http
             .csrf(csrf -> csrf.disable())
             .authorizeExchange(exchanges -> exchanges
-                .anyExchange().authenticated()
+                .anyExchange().permitAll()
             )
-            .httpBasic(withDefaults());
-
-        return http.build();
+            .httpBasic(httpBasic -> httpBasic.disable())
+            .formLogin(form -> form.disable())
+            .build();
     }
 }

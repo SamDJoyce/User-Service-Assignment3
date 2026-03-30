@@ -18,13 +18,13 @@ public class User {
 	@Id
 	@GeneratedValue( strategy = GenerationType.IDENTITY)
 	@Column(name = "user_id")
-	private int 		  userId;
+	private int userId;
 	@Column(name = "user_name")
-	private String 		  userName;
+	private String userName;
 	@Column(name = "email")
-	private String 		  email;
+	private String email;
 	@Column(name = "pass_hash")
-	private String		  passHash;
+	private String passHash;
 	
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
