@@ -11,7 +11,7 @@ import org.springframework.data.jpa.repository.Query;
  *
  */
 public interface UserRepository extends JpaRepository<User, Integer>{
-	Optional<User> findByUserName(String userName);
+	Optional<User> findByUserNameIgnoreCase(String userName);
 	Optional<User> findByEmail(String email);
 	@Query("""
 		    SELECT new org.ac.cst8277.Joyce.Samuel.user_service.UserRolesDTO(u.userName, r.roleName)

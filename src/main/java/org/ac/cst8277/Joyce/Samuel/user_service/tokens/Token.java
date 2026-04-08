@@ -26,6 +26,10 @@ public class Token {
 		tokenID = UUID.randomUUID().toString();
 		expiry = LocalDateTime.now().plusMinutes(EXPIRE_TIME);
 	}
+	
+	public Token() {
+		// Required
+	}
 
 	
 	public String getTokenId() {

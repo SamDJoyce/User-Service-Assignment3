@@ -23,5 +23,6 @@ spring:
             scope:
               - read:user
               - user:email
+            redirect-uri: "http://localhost:8080/login/oauth2/code/github"
 server:
   port: 8080

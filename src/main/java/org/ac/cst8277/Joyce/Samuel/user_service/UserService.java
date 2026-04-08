@@ -30,7 +30,7 @@ public class UserService {
 	public Mono<String> login(String username, String password){
 		return Mono.fromCallable(() -> {
 			// Retrieve the user by user name
-			User user = userRepo.findByUserName(username)
+			User user = userRepo.findByUserNameIgnoreCase(username)
 					.orElseThrow(() -> new RuntimeException("User not found"));
 			// Compare password to stored hash
 			Boolean matches = passEncoder.matches(password, user.getPassHash());
@@ -42,9 +42,9 @@ public class UserService {
 		});
 	}
 	
-	public Mono<String> oAuthLogin(String username, String email) {
+	public Mono<String> oAuthLogin(String username) {
 	    return Mono.fromCallable(() -> {
-	        User user = userRepo.findByEmail(email)
+	        User user = userRepo.findByUserNameIgnoreCase(username)
 	                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credential mismatch"));
 
 	        return generateToken(user.getUserId());
@@ -87,7 +87,7 @@ public class UserService {
 	            return new ApiResponse("Email already exists");
 	        }
 
-	        if (userRepo.findByUserName(userName).isPresent()) {
+	        if (userRepo.findByUserNameIgnoreCase(userName).isPresent()) {
 	            return new ApiResponse("Username already exists");
 	        }
 	        // Hash password before saving

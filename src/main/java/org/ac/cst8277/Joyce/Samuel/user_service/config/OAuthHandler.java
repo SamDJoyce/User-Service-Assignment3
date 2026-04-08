@@ -1,7 +1,5 @@
 package org.ac.cst8277.Joyce.Samuel.user_service.config;
 
-import java.net.URI;
-
 import org.ac.cst8277.Joyce.Samuel.user_service.UserService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -21,17 +19,17 @@ public class OAuthHandler implements ServerAuthenticationSuccessHandler {
     }
 
     @Override
-    public Mono<Void> onAuthenticationSuccess(WebFilterExchange exchange, Authentication authentication) {
+    public Mono<Void> onAuthenticationSuccess(	WebFilterExchange exchange, 
+    											Authentication authentication ) {
         OAuth2User oauthUser = (OAuth2User) authentication.getPrincipal();
+        
+        // **** For testing ****
+        //System.out.println("OAUTH ATTRIBUTES: " + oauthUser.getAttributes());
 
         String username = oauthUser.getAttribute("login");
-        String email = oauthUser.getAttribute("email");
+        //String email = oauthUser.getAttribute("email");
 
-        if (email == null) {
-            email = username + "@github.com";
-        }
-
-        return userService.oAuthLogin(username, email)
+        return userService.oAuthLogin(username)
         		.flatMap(token -> {
         			// Authorized
                     exchange.getExchange().getResponse().setStatusCode(org.springframework.http.HttpStatus.FOUND);
@@ -42,6 +40,8 @@ public class OAuthHandler implements ServerAuthenticationSuccessHandler {
                 })
                 .onErrorResume(e -> {
                     // Unauthorized
+                	// **** For testing ****
+                	//e.printStackTrace();
                     exchange.getExchange().getResponse().setStatusCode(
                             org.springframework.http.HttpStatus.UNAUTHORIZED
                     );
