@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: user_service
+
+  datasource:
+    url: jdbc:mysql://192.168.23.129:30307/user_service?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+    username: root
+    password: pancake
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: Ov23lizXeMxGVnckLG1c
+            client-secret: c6e01204dd2bf0e82691759641e96a87819f9597
+            scope:
+              - read:user
+              - user:email
+server:
+  port: 8080

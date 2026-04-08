@@ -2,6 +2,7 @@ package org.ac.cst8277.Joyce.Samuel.user_service.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -17,14 +18,13 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
+    public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http,
+    														OAuthHandler handler) {
         return http
-            .csrf(csrf -> csrf.disable())
             .authorizeExchange(exchanges -> exchanges
-                .anyExchange().permitAll()
+                .anyExchange().authenticated()
             )
-            .httpBasic(httpBasic -> httpBasic.disable())
-            .formLogin(form -> form.disable())
+            .oauth2Login(oauth -> oauth.authenticationSuccessHandler(handler))
             .build();
     }
 }

@@ -1,11 +1,13 @@
 package org.ac.cst8277.Joyce.Samuel.user_service;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.time.LocalDateTime;
 
+import org.ac.cst8277.Joyce.Samuel.user_service.tokens.Token;
+import org.ac.cst8277.Joyce.Samuel.user_service.tokens.TokenRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -13,20 +15,22 @@ import reactor.core.scheduler.Schedulers;
 
 @Service
 public class UserService {
-	private final UserRepository  repo;
+	private final UserRepository  userRepo;
+	private final TokenRepository tokenRepo;
 	private final PasswordEncoder passEncoder;
-	private Map<String, Integer>  generatedTokens;
 	
-	public UserService(UserRepository repo, PasswordEncoder passEncoder) {
-		this.repo = repo;
+	public UserService(	UserRepository userRepo, 
+						TokenRepository tokenRepo, 
+						PasswordEncoder passEncoder) {
+		this.userRepo = userRepo;
+		this.tokenRepo = tokenRepo;
 		this.passEncoder = passEncoder;
-		this.generatedTokens = new HashMap<>();
 	}
 	
 	public Mono<String> login(String username, String password){
 		return Mono.fromCallable(() -> {
 			// Retrieve the user by user name
-			User user = repo.findByUserName(username)
+			User user = userRepo.findByUserName(username)
 					.orElseThrow(() -> new RuntimeException("User not found"));
 			// Compare password to stored hash
 			Boolean matches = passEncoder.matches(password, user.getPassHash());
@@ -38,21 +42,30 @@ public class UserService {
 		});
 	}
 	
-	public Mono<Integer> getUserIdFromToken(String token) {
+	public Mono<String> oAuthLogin(String username, String email) {
 	    return Mono.fromCallable(() -> {
-	        Integer userId = generatedTokens.get(token);
-	        if (userId == null) {
-	            throw new RuntimeException("Invalid token");
-	        }
-	        return userId;
-	    });
+	        User user = userRepo.findByEmail(email)
+	                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credential mismatch"));
+
+	        return generateToken(user.getUserId());
+	    }).subscribeOn(Schedulers.boundedElastic());
+	}
+	
+	public Mono<Integer> getUserIdFromToken(String token) {
+	    return validateToken(token);
 	}
 	
 	public Mono<Integer> validateToken(String token) {
-		if (generatedTokens.containsKey(token)) {
-			return Mono.just(generatedTokens.get(token));
-		}
-	    return Mono.just(0);
+	    return Mono.fromCallable(() -> {
+	        Token t = tokenRepo.findByTokenId(token)
+	        		 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token"));
+
+	        if (t.getExpiry().isBefore(LocalDateTime.now())) {
+	            throw new RuntimeException("Token expired");
+	        }
+
+	        return t.getUserId();
+	    }).subscribeOn(Schedulers.boundedElastic());
 	}
 	
 	public Flux<User> getAllUsers(String token) {
@@ -62,7 +75,7 @@ public class UserService {
 	                return Flux.error(new RuntimeException("Invalid token"));
 	            }
 
-	            return Mono.fromCallable(repo::findAll)
+	            return Mono.fromCallable(userRepo::findAll)
 	                       .subscribeOn(Schedulers.boundedElastic())
 	                       .flatMapMany(Flux::fromIterable);
 	        });
@@ -70,11 +83,11 @@ public class UserService {
 	
 	public Mono<ApiResponse> addUser(String userName, String email, String password) {
 	    return Mono.fromCallable(() -> {
-	        if (repo.findByEmail(email).isPresent()) {
+	        if (userRepo.findByEmail(email).isPresent()) {
 	            return new ApiResponse("Email already exists");
 	        }
 
-	        if (repo.findByUserName(userName).isPresent()) {
+	        if (userRepo.findByUserName(userName).isPresent()) {
 	            return new ApiResponse("Username already exists");
 	        }
 	        // Hash password before saving
@@ -86,7 +99,7 @@ public class UserService {
 	                .setPassHash(hashed)
 	                .build();
 	        // Save user
-	        repo.save(user);
+	        userRepo.save(user);
 
 	        return new ApiResponse("User successfully created");
 	    }).subscribeOn(Schedulers.boundedElastic());
@@ -99,7 +112,7 @@ public class UserService {
 	                return Flux.error(new RuntimeException("Invalid token"));
 	            }
 
-	            return Mono.fromCallable(repo::findAll)
+	            return Mono.fromCallable(userRepo::findAll)
 	                    .subscribeOn(Schedulers.boundedElastic())
 	                    .flatMapMany(Flux::fromIterable)
 	                    .flatMap(user -> Flux.fromIterable(user.getRoles()))
@@ -115,19 +128,16 @@ public class UserService {
 	                return Flux.error(new RuntimeException("Invalid token"));
 	            }
 
-	            return Mono.fromCallable(repo::findAllUserRoles)
+	            return Mono.fromCallable(userRepo::findAllUserRoles)
 	                    .subscribeOn(Schedulers.boundedElastic())
 	                    .flatMapMany(Flux::fromIterable);
 	        });
 	}
 	
-	private String generateToken(int userId) {
-		String token;
-		do {
-			token = UUID.randomUUID().toString();
-		} while (generatedTokens.containsKey(token));
-		generatedTokens.put(token, userId);
-		return token;
+	public String generateToken(int userId) {
+		Token token  = new Token(userId);
+		tokenRepo.save(token);
+		return token.getTokenId();
 	}
 	
 	private Mono<Boolean> valid(String token) {
