@@ -1,5 +1,6 @@
 package org.ac.cst8277.Joyce.Samuel.user_service;
 
+import org.ac.cst8277.Joyce.Samuel.user_service.tokens.ValidTokenResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,15 +21,14 @@ public class UserController {
     }
 
     // Login
-    @PostMapping("/login")
-    public Mono<String> login(@RequestParam String username,
-                              @RequestParam String password) {
-        return service.login(username, password);
-    }
+//    @PostMapping("/login")
+//    public Mono<String> login(@RequestParam String username) {
+//        return service.oAuthLogin(username);
+//    }
 
     // Validate token
     @GetMapping("/validate")
-    public Mono<Integer> validate(@RequestParam String token) {
+    public Mono<ValidTokenResponse> validate(@RequestParam String token) {
         return service.validateToken(token);
     }
     

@@ -15,7 +15,7 @@ public class Token {
 	
 	@Id
 	@Column(name = "token_id")
-	private String tokenID;
+	private String tokenId;
 	@Column(name = "user_id")
 	private int userId;
 	@Column(name = "expiry")
@@ -23,7 +23,7 @@ public class Token {
 	
 	public Token(int user_id) {
 		this.userId = user_id;
-		tokenID = UUID.randomUUID().toString();
+		tokenId = UUID.randomUUID().toString();
 		expiry = LocalDateTime.now().plusMinutes(EXPIRE_TIME);
 	}
 	
@@ -33,11 +33,11 @@ public class Token {
 
 	
 	public String getTokenId() {
-		return tokenID;
+		return tokenId;
 	}
 
 	public void setTokenId(String token_id) {
-		this.tokenID = token_id;
+		this.tokenId = token_id;
 	}
 
 	public int getUserId() {

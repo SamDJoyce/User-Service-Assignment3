@@ -1,7 +1,12 @@
 package org.ac.cst8277.Joyce.Samuel.user_service.config;
 
+import java.nio.charset.StandardCharsets;
+
 import org.ac.cst8277.Joyce.Samuel.user_service.UserService;
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.server.WebFilterExchange;
 import org.springframework.security.web.server.authentication.ServerAuthenticationSuccessHandler;
@@ -19,33 +24,29 @@ public class OAuthHandler implements ServerAuthenticationSuccessHandler {
     }
 
     @Override
-    public Mono<Void> onAuthenticationSuccess(	WebFilterExchange exchange, 
-    											Authentication authentication ) {
-        OAuth2User oauthUser = (OAuth2User) authentication.getPrincipal();
-        
-        // **** For testing ****
-        //System.out.println("OAUTH ATTRIBUTES: " + oauthUser.getAttributes());
+    public Mono<Void> onAuthenticationSuccess(WebFilterExchange exchange,
+                                              Authentication authentication) {
 
-        String username = oauthUser.getAttribute("login");
-        //String email = oauthUser.getAttribute("email");
+        OAuth2AuthenticationToken oauthToken = (OAuth2AuthenticationToken) authentication;
 
-        return userService.oAuthLogin(username)
-        		.flatMap(token -> {
-        			// Authorized
-                    exchange.getExchange().getResponse().setStatusCode(org.springframework.http.HttpStatus.FOUND);
-                    exchange.getExchange().getResponse().getHeaders().setLocation(
-                            java.net.URI.create("/token?value=" + token)
-                    );
-                    return exchange.getExchange().getResponse().setComplete();
-                })
-                .onErrorResume(e -> {
-                    // Unauthorized
-                	// **** For testing ****
-                	//e.printStackTrace();
-                    exchange.getExchange().getResponse().setStatusCode(
-                            org.springframework.http.HttpStatus.UNAUTHORIZED
-                    );
-                    return exchange.getExchange().getResponse().setComplete();
-                });
+        OAuth2User user = oauthToken.getPrincipal();
+
+        // GitHub username
+        String githubUsername = user.getAttribute("login");
+
+        // Generate a token
+        String token = userService.handleOAuthLogin(githubUsername);
+
+        // Return token in response
+        ServerHttpResponse response = exchange.getExchange().getResponse();
+
+        response.getHeaders().set("Content-Type", "application/json");
+
+        String body = "{\"token\": \"" + token + "\"}";
+
+        DataBuffer buffer = response.bufferFactory()
+                .wrap(body.getBytes(StandardCharsets.UTF_8));
+
+        return response.writeWith(Mono.just(buffer));
     }
 }
